@@ -29,9 +29,6 @@ Remove Lead
     Browse To Leads
     Remove Lead        ${FIRSTNAME} ${LASTNAME}
 
-URL Reg
-    browse to here
-
 *** Keywords ***
 Clear Artifacts
     Empty Directory    ./Artifacts/

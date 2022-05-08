@@ -1,14 +1,18 @@
 from datetime import timedelta
 from functools import wraps
-import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 from typing import Callable
-from assertionengine import AssertionOperator
+from typing import Dict
+from typing import List
+from typing import Tuple
 
+import os
+
+from Browser import Browser
+from Browser import ElementState
 from robot.libraries.BuiltIn import BuiltIn
 from robot.libraries.BuiltIn import RobotNotRunningError
-from Browser import Browser, ElementState
 
 import pyotp
 
@@ -16,31 +20,37 @@ class Utils:
     __slots__ = "get_ununsed_filename"
     @staticmethod
     def get_unused_filename(target_path: Path|str) -> Path:
-        target_path = Path(target_path)
-        resolved_path = target_path.resolve()
+        def get_count(part: Tuple[str,str,str]) -> int:
+            return int(part[2].rpartition(".")[0])
+
+        def get_new_filepath(path: Path, partition: Tuple[str,str,str]|None, fileindex: int = 1):
+            if partition:
+                return path.parent / str(partition[0] + "_" + str(fileindex) + path.suffix)
+            else:
+                return path.parent / (path.stem + "_1" + path.suffix)
+
+        resolved_path = Path(target_path).resolve()
         if resolved_path.exists():
+            count = 1
             try:
                 part = resolved_path.name.rpartition("_")
-                count = int(part[2].rpartition(".")[0])
-                filename = resolved_path.parent / (part[0] + "_" + str(count + 1) + resolved_path.suffix)
+                count = get_count(part)
+                filename = get_new_filepath(path=resolved_path, partition = part, fileindex=count + 1)
             except ValueError:
-                count = 1
-                filename = resolved_path.parent / (resolved_path.stem + "_1" + resolved_path.suffix)
+                filename = get_new_filepath(path=resolved_path, partition=None)
                 part = filename.name.rpartition("_")
-                count = int(part[2].rpartition(".")[0])
             while filename.exists():
-                count = count + 1
-                filename = resolved_path.parent / str(part[0] + "_" + str(count) + resolved_path.suffix)
+                count += 1
+                filename = get_new_filepath(path=resolved_path, partition=part, fileindex=count)
         else:
             return resolved_path
         return filename
 
-
 class Salesforce:
     __slots__ = ("username", "loginpage", "browser", "_testname", "_otp")
     def __init__(self, username: str):
-        self.username = username
-        self.loginpage = "https://nan3.my.salesforce.com/"
+        self.username: str = username
+        self.loginpage: str = "https://nan3.my.salesforce.com/"
         self.browser = Browser(enable_presenter_mode=True)
         self.browser.new_browser(headless=False,slowMo=timedelta(milliseconds=100))
         self._otp = pyotp.TOTP(os.getenv("TOPT", ""))
@@ -72,18 +82,20 @@ class Salesforce:
         # Basicauth
         self.browser.new_page()
         self.browser.go_to(self.loginpage)
-        self.browser.fill_text('input[name="username"]', self.username)
-        self.browser.fill_secret('input[name="pw"]', password)
-        self.browser.click('input[name="Login"]')
+        self.browser.fill_text('//input[@id="username"]', self.username)
+        self.browser.fill_secret('//input[@id="password"]', password)
+        self.browser.click('//input[@id="Login"]')
 
         # OTP
         #wait for navi? url="/https:\/\/nan3.my.salesforce.com\/_ui\/identity\/verification\/.+?/i") 
-        self.browser.wait_for_elements_state('//*[@id="tc"]', state=ElementState.stable)
-        self.browser.fill_text('//*[@id="tc"]', self._otp.now())  # //*[@id="tc"]
-        self.browser.click('//*[@id="save"]')  # //*[@id="save"]
+        self.browser.wait_for_elements_state('//input[@id="tc"]', state=ElementState.stable)
+        self.browser.fill_text('//input[@id="tc"]', self._otp.now())
+        self.browser.click('//input[@id="save"]')
 
+        # Sloooow loader...
         self.browser.wait_for_navigation(url="https://nan3.lightning.force.com/lightning/page/home")
-        self.browser.wait_until_network_is_idle()
+        self.browser.wait_for_elements_state('.oneAppNavContainer >> a[role="button"]:has-text("Leads Menu")', state=ElementState.stable)
+        raise Exception
 
     @_screenshotter  # type: ignore
     def open_new_lead(self):
@@ -129,5 +141,6 @@ class Salesforce:
         self.browser.wait_for_elements_state(f'tr:has-text("{name}") >> a[role="button"]', ElementState.detached)
         self.browser.wait_until_network_is_idle()
 
-    def __exit__(self):
+    def __del__(self):
         self.browser.close_browser()
+
