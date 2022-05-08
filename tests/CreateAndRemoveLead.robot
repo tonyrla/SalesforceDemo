@@ -8,7 +8,7 @@ Suite Setup          Clear Artifacts
 ${FIRSTNAME}=          Tony
 ${LASTNAME}=           Rintala
 ${COMPANY}=            Siwa
-${EMAIL}=              tony.rintala@lahikauppa.fi
+${EMAIL}=              tony.rintala@hok.fi
 ${LEADSTATUS}=         Qualified
 ${SALUTATION}=         Mr.
 

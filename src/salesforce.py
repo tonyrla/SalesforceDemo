@@ -5,7 +5,7 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import List
-from typing import Tuple
+
 
 import os
 
@@ -16,35 +16,8 @@ from robot.libraries.BuiltIn import RobotNotRunningError
 
 import pyotp
 
-class Utils:
-    __slots__ = "get_ununsed_filename"
-    @staticmethod
-    def get_unused_filename(target_path: Path|str) -> Path:
-        def get_count(part: Tuple[str,str,str]) -> int:
-            return int(part[2].rpartition(".")[0])
-
-        def get_new_filepath(path: Path, partition: Tuple[str,str,str]|None, fileindex: int = 1):
-            if partition:
-                return path.parent / str(partition[0] + "_" + str(fileindex) + path.suffix)
-            else:
-                return path.parent / (path.stem + "_1" + path.suffix)
-
-        resolved_path = Path(target_path).resolve()
-        if resolved_path.exists():
-            count = 1
-            try:
-                part = resolved_path.name.rpartition("_")
-                count = get_count(part)
-                filename = get_new_filepath(path=resolved_path, partition = part, fileindex=count + 1)
-            except ValueError:
-                filename = get_new_filepath(path=resolved_path, partition=None)
-                part = filename.name.rpartition("_")
-            while filename.exists():
-                count += 1
-                filename = get_new_filepath(path=resolved_path, partition=part, fileindex=count)
-        else:
-            return resolved_path
-        return filename
+from src.utilities import get_unused_filename
+from src.utilities import LOCATORS
 
 class Salesforce:
     __slots__ = ("username", "loginpage", "browser", "_testname", "_otp")
@@ -69,11 +42,11 @@ class Salesforce:
             try:
                 func(*args, **kwargs)
             except Exception:
-                filename = Utils.get_unused_filename(Path(f"artifacts/{folder}/{func.__name__}_FAIL.png")).resolve().__str__()
+                filename = get_unused_filename(Path(f"artifacts/{folder}/{func.__name__}_FAIL.png")).resolve().__str__()
                 instance.browser.take_screenshot(filename=filename)
                 raise
             
-            filename = Utils.get_unused_filename(Path(f"artifacts/{folder}/{func.__name__}.png")).resolve().__str__()
+            filename = get_unused_filename(Path(f"artifacts/{folder}/{func.__name__}.png")).resolve().__str__()
             instance.browser.take_screenshot(filename=filename)
         return wrapper
 
@@ -95,7 +68,6 @@ class Salesforce:
         # Sloooow loader...
         self.browser.wait_for_navigation(url="https://nan3.lightning.force.com/lightning/page/home")
         self.browser.wait_for_elements_state('.oneAppNavContainer >> a[role="button"]:has-text("Leads Menu")', state=ElementState.stable)
-        raise Exception
 
     @_screenshotter  # type: ignore
     def open_new_lead(self):
@@ -125,6 +97,7 @@ class Salesforce:
     @_screenshotter  # type: ignore
     def save_lead(self):
         self.browser.click('.inlinePanel >> button[name="SaveEdit"]')
+        self.browser.wait_for_elements_state('.inlinePanel >> button[name="SaveEdit"]', ElementState.detached)
         self.browser.wait_until_network_is_idle()
 
     @_screenshotter  # type: ignore
