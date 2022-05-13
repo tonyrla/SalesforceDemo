@@ -27,7 +27,7 @@ Create Lead
 Remove Lead
     Login              $PASSWORD
     Browse To Leads
-    Remove Lead        ${FIRSTNAME} ${LASTNAME}
+    Remove Lead        ${FIRSTNAME} ${LASTNAME}  ${COMPANY}  ${EMAIL}
 
 *** Keywords ***
 Clear Artifacts

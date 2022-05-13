@@ -11,6 +11,7 @@ import os
 
 from Browser import Browser
 from Browser import ElementState
+from dotenv import load_dotenv
 from robot.libraries.BuiltIn import BuiltIn
 from robot.libraries.BuiltIn import RobotNotRunningError
 
@@ -22,15 +23,22 @@ from src.utilities import LOCATORS
 class Salesforce:
     __slots__ = ("username", "loginpage", "browser", "_testname", "_otp")
     def __init__(self, username: str):
+        load_dotenv()
         self.username: str = username
         self.loginpage: str = "https://nan3.my.salesforce.com/"
         self.browser = Browser(enable_presenter_mode=True)
         self.browser.new_browser(headless=False,slowMo=timedelta(milliseconds=100))
-        self._otp = pyotp.TOTP(os.getenv("TOPT", ""))
+        otp_secret = os.getenv("TOTP", "")
+        if len(otp_secret) <= 0:
+            raise Exception('OTP secret missing, make sure you have added environment variable "TOTP=YourSecretHere"')
+        self._otp = pyotp.TOTP(otp_secret)
+
         try:
             self._testname = BuiltIn().get_variable_value("${TEST NAME}")
         except RobotNotRunningError:
             self._testname = "python"
+
+        self.browser.register_keyword_to_run_on_failure(None)
 
     def _screenshotter(func: Callable[..., Any]):  # type: ignore
         # Underscore to prevent keyword creation instead of having to list everything in __all__ or using @not_keyword
@@ -106,12 +114,12 @@ class Salesforce:
         self.browser.wait_until_network_is_idle()
 
     @_screenshotter  # type: ignore
-    def remove_lead(self, name: str):
-        self.browser.click(f'tr:has-text("{name}") >> a[role="button"]') # f'.uiScroller >> .forceRecordLayout >> tr:has-text("{name}") >> a[role="button"]'
+    def remove_lead(self, name: str, company: str, email: str):
+        self.browser.click(f'tr:has-text("{name}"), tr:has-text("{company}"), tr:has-text("{email}") >> a[role="button"]') # f'.uiScroller >> .forceRecordLayout >> tr:has-text("{name}") >> a[role="button"]'
         self.browser.click('a[role="menuitem"]:has-text("Delete")')
         self.browser.wait_for_elements_state('button[title="Delete"]', ElementState.stable)
         self.browser.click('button[title="Delete"]')
-        self.browser.wait_for_elements_state(f'tr:has-text("{name}") >> a[role="button"]', ElementState.detached)
+        self.browser.wait_for_elements_state(f'tr:has-text("{name}"), tr:has-text("{company}"), tr:has-text("{email}") >> a[role="button"]', ElementState.detached)
         self.browser.wait_until_network_is_idle()
 
     def __del__(self):

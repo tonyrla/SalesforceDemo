@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
+from typing import Tuple
 
 def get_unused_filename(target_path: Path|str) -> Path:
     def get_count(part: Tuple[str,str,str]) -> int:
@@ -30,7 +31,8 @@ def get_unused_filename(target_path: Path|str) -> Path:
         return resolved_path
     return filename
 
-
+# This is not in use, as I did it during the weekend after claiming to be ready,
+# and is mainly just for Mikko to see a native way of creating namespace objects (dot notation) and a bit simplified parsing.
 @dataclass(slots=True, frozen=True)
 class LOCATORS:
     """
